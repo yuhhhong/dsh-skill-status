@@ -1,2 +1,4 @@
 autoInstallPeers: false
 verifyDepsBeforeRun: false
+allowBuilds:
+  esbuild: true
