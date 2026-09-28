@@ -19,7 +19,7 @@
     "check": "node --check src/index.js && node --check src/analyze.js && node --check src/monitor.js",
     "prepack": "node scripts/build.mjs"
   },
-  "peerDependencies": { "@deepseek-ai/dsh": "0.1.7-rc.2" },
+  "peerDependencies": { "@deepseek-ai/dsh": ">=0.1.7-rc.2" },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
     "@deepseek-ai/cordis-plugin-include": "1.0.9",
