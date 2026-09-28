@@ -7,6 +7,7 @@ DeepSeek Harness（DSH）的会话技能状态插件。在会话标题栏显示�
 ## 功能
 
 - 合并当前技能目录与历史正式加载记录，支持按名称或说明筛选。
+- 已加载的技能排在列表前面，同组内按名称排序。
 - 识别 `/技能名` 和 `skill` 工具的正式加载记录，核对主正文是否完整保留。
 - 查看历史正文版本、加载次数和加载时的资源指引；同一技能的多个版本只计数一次。
 - 分别展示加载时的来源与当前目录来源；源文件后续修改不会覆盖历史正文。
@@ -30,7 +31,7 @@ dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-当前插件版本为 `0.1.1`，适配 DSH `0.1.7-rc.2`。
+当前插件版本为 `0.1.2`，适配 DSH `0.1.7-rc.2`。
 
 ## 状态含义
 
@@ -64,6 +65,17 @@ pnpm test
 
 项目关闭自动补装 peer 依赖，DSH 宿主由目标运行环境提供。兼容版本以[包清单](<./package.json>)中的 `peerDependencies` 为准。
 
+## 发布
+
+推送 `v` 前缀标签即触发[发布工作流](<.github/workflows/release.yml>)：核对标签与包版本、提取发布说明、检查已提交产物、运行语法检查与测试，全部通过后自动创建 GitHub Release。不附带压缩包。
+
+发布前先在[更新日志](<./CHANGELOG.md>)写入该版本的段落，再提交 `lib/` 并推送标签。标签与 `package.json` 版本不一致，或更新日志缺少该版本段落时，工作流会在发布前失败。
+
+```sh
+git tag -a v0.1.2 -m "发布 v0.1.2"
+git push origin v0.1.2
+```
+
 | 文件 | 用途 |
 | --- | --- |
 | [src/analyze.js](<./src/analyze.js>) | 正式加载识别、正文完整性核对、历史合并与计数 |
@@ -71,6 +83,7 @@ pnpm test
 | [src/index.js](<./src/index.js>) | 宿主事件订阅与状态查询路由 |
 | [src/client.jsx](<./src/client.jsx>) | 标题入口、右侧面板与版本切换 |
 | [scripts/build.mjs](<./scripts/build.mjs>) | 构建宿主与 DSH 客户端模块 |
+| [scripts/release-notes.mjs](<./scripts/release-notes.mjs>) | 按包版本从更新日志提取 Release 正文 |
 | [lib/](<./lib>) | 随仓库提交的构建产物，使 git 安装无需构建授权 |
 
 ## 项目文档

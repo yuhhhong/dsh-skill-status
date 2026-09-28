@@ -7,6 +7,7 @@ A session skill status plugin for DeepSeek Harness (DSH). It shows the number of
 ## Features
 
 - Combines the current skill catalog with historical loading records, with filtering by name or description.
+- Lists loaded skills first, with each group sorted by name.
 - Recognizes official loading through `/skill-name` and the `skill` tool, and checks whether the full main body is retained.
 - Shows historical body versions, load counts, and resource guidance recorded at load time. Multiple versions of one skill count as one skill.
 - Displays load-time sources separately from current catalog sources. Later edits to source files do not replace historical bodies.
@@ -30,7 +31,7 @@ To uninstall:
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-The current plugin version is `0.1.1`, targeting DSH `0.1.7-rc.2`.
+The current plugin version is `0.1.2`, targeting DSH `0.1.7-rc.2`.
 
 ## Status meanings
 
@@ -66,6 +67,17 @@ After changing `src/`, run `pnpm run build` and commit the updated `lib/`. A [te
 
 Automatic peer dependency installation is disabled. The target environment supplies the DSH host. See `peerDependencies` in the [package manifest](<./package.json>) for the compatibility constraint.
 
+## Releasing
+
+Pushing a `v`-prefixed tag triggers the [release workflow](<.github/workflows/release.yml>): it verifies the tag against the package version, extracts the release notes, checks the committed artifacts, runs the syntax checks and tests, and then creates the GitHub Release automatically. No archive is attached.
+
+Before releasing, write that version's section in the [changelog](<./CHANGELOG.md>), commit `lib/`, and push the tag. The workflow fails before publishing when the tag disagrees with the `package.json` version or the changelog lacks that version's section.
+
+```sh
+git tag -a v0.1.2 -m "Release v0.1.2"
+git push origin v0.1.2
+```
+
 | File | Purpose |
 | --- | --- |
 | [src/analyze.js](<./src/analyze.js>) | Official-load recognition, body completeness checks, history merging, and counting |
@@ -73,6 +85,7 @@ Automatic peer dependency installation is disabled. The target environment suppl
 | [src/index.js](<./src/index.js>) | Host event subscriptions and the status query route |
 | [src/client.jsx](<./src/client.jsx>) | Header entry, right sidebar, and version switching |
 | [scripts/build.mjs](<./scripts/build.mjs>) | Host and DSH client module builds |
+| [scripts/release-notes.mjs](<./scripts/release-notes.mjs>) | Extracts the Release body for the package version from the changelog |
 | [lib/](<./lib>) | Committed build artifacts, so git installs need no build approval |
 
 ## Project documentation

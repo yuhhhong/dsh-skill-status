@@ -135,7 +135,10 @@ export function analyze({ events = [], messages, catalog = [], catalogComplete =
       : !complete || row.versions.some(version => version.state === 'unknown') ? 'unknown'
       : row.versions.length ? 'removed' : 'absent';
     return { ...row, state, directoryState: !catalogComplete ? 'unknown' : row.inCatalog ? 'present' : 'absent', sourceState: 'unknown' };
-  }).sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'));
+  }).sort((left, right) =>
+    // 已加载的技能排在前面；同组内按名称排序，状态变化时只调整组间位置。
+    Number(right.state === 'loaded') - Number(left.state === 'loaded')
+    || left.name.localeCompare(right.name, 'zh-CN'));
   return { skills, loadedCount: skills.filter(row => row.state === 'loaded').length,
     uncertain: !complete || !catalogComplete || !messages || skills.some(row => row.state === 'unknown'),
     historyComplete: complete, catalogComplete, contextComplete: !!messages };

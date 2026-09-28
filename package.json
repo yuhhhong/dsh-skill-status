@@ -1,6 +1,6 @@
 {
   "name": "dsh-skill-status",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "查看当前主助手会话中技能完整正文的加载状态、历史版本与来源",
   "type": "module",
   "main": "./lib/index.js",

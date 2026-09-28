@@ -130,6 +130,23 @@ test('合并用户可调用与助手可调用目录，排除均不可调用项',
   assert.deepEqual(inspect(f, { catalog }).skills.map(row => row.name), ['model', 'user']);
 });
 
+test('已加载的技能排在未加载技能之前，组内仍按名称排序', () => {
+  const f = fixture();
+  const catalog = [catalogSkill('alpha'), catalogSkill('beta'), catalogSkill('gamma'), catalogSkill('delta')];
+  f.tool('gamma');
+  f.tool('beta');
+  const result = inspect(f, { catalog });
+  assert.deepEqual(result.skills.map(row => row.name), ['beta', 'gamma', 'alpha', 'delta']);
+  assert.deepEqual(result.skills.map(row => row.state), ['loaded', 'loaded', 'absent', 'absent']);
+});
+
+test('未加载技能不会插到已加载技能前面', () => {
+  const f = fixture();
+  const catalog = [catalogSkill('aaa'), catalogSkill('zzz')];
+  f.tool('zzz');
+  assert.deepEqual(inspect(f, { catalog }).skills.map(row => row.name), ['zzz', 'aaa']);
+});
+
 test('短正文只残留在包装文字中时不误判为已加载', () => {
   const f = fixture();
   const original = f.tool('demo', render('demo', 'skill'));

@@ -37,6 +37,9 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
+      - name: 提取发布说明
+        run: node scripts/release-notes.mjs > release-notes.md
+
       - name: 检查已提交产物
         run: node --test test/lib-sync.test.mjs
 
@@ -49,4 +52,4 @@ jobs:
       - name: 创建 GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file release-notes.md
