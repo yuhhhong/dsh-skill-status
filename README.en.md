@@ -60,6 +60,10 @@ pnpm test
 
 `pnpm test` builds the project before running tests. `pnpm pack` also builds automatically through `prepack`. Building this project does not automatically update a running DSH page.
 
+The built `lib/` artifacts are committed to the repository — do not delete or ignore them. When pnpm installs a dependency from a git source, it checks whether the file `main` points at (`lib/index.js`) exists: if it does not, pnpm decides the package needs its build scripts and demands `allowBuilds` authorization; if it does, pnpm skips the build stage entirely. Keeping `lib/` committed is therefore what makes installation from GitHub require no build approval. `prepack` stays, because publishing to npm needs it to rebuild.
+
+After changing `src/`, run `pnpm run build` and commit the updated `lib/`. A [test](<./test/lib-sync.test.mjs>) compares `lib/` against a fresh build and fails when the artifacts are stale.
+
 Automatic peer dependency installation is disabled. The target environment supplies the DSH host. See `peerDependencies` in the [package manifest](<./package.json>) for the compatibility constraint.
 
 | File | Purpose |
@@ -69,6 +73,7 @@ Automatic peer dependency installation is disabled. The target environment suppl
 | [src/index.js](<./src/index.js>) | Host event subscriptions and the status query route |
 | [src/client.jsx](<./src/client.jsx>) | Header entry, right sidebar, and version switching |
 | [scripts/build.mjs](<./scripts/build.mjs>) | Host and DSH client module builds |
+| [lib/](<./lib>) | Committed build artifacts, so git installs need no build approval |
 
 ## Project documentation
 

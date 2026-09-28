@@ -58,6 +58,10 @@ pnpm test
 
 `pnpm test` 会先构建，再运行测试。`pnpm pack` 也会通过 `prepack` 自动构建。构建本项目不会自行更新正在运行的 DSH 页面。
 
+`lib/` 的构建产物随仓库提交，请勿删除或忽略。pnpm 安装 git 来源的依赖时，会检查 `main` 指向的 `lib/index.js` 是否存在：不存在就判定该包需要执行构建脚本，从而要求 `allowBuilds` 授权；存在则直接跳过构建阶段。因此保留 `lib/` 是从 GitHub 安装无需构建授权的前提，`prepack` 仍然保留，用于发布 npm 包时重新构建。
+
+改动 `src/` 后请运行 `pnpm run build` 并提交更新后的 `lib/`。[测试](<./test/lib-sync.test.mjs>)会比对 `lib/` 与当前源码的构建结果，产物过期时会失败。
+
 项目关闭自动补装 peer 依赖，DSH 宿主由目标运行环境提供。兼容版本以[包清单](<./package.json>)中的 `peerDependencies` 为准。
 
 | 文件 | 用途 |
@@ -67,6 +71,7 @@ pnpm test
 | [src/index.js](<./src/index.js>) | 宿主事件订阅与状态查询路由 |
 | [src/client.jsx](<./src/client.jsx>) | 标题入口、右侧面板与版本切换 |
 | [scripts/build.mjs](<./scripts/build.mjs>) | 构建宿主与 DSH 客户端模块 |
+| [lib/](<./lib>) | 随仓库提交的构建产物，使 git 安装无需构建授权 |
 
 ## 项目文档
 
