@@ -31,7 +31,7 @@ dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-当前插件版本为 `0.1.2`，适配 DSH `0.1.7-rc.2`。
+当前插件版本为 `0.1.3`，适配 DSH `0.1.7-rc.2`。
 
 ## 状态含义
 
@@ -72,8 +72,8 @@ pnpm test
 发布前先在[更新日志](<./CHANGELOG.md>)写入该版本的段落，再提交 `lib/` 并推送标签。标签与 `package.json` 版本不一致，或更新日志缺少该版本段落时，工作流会在发布前失败。
 
 ```sh
-git tag -a v0.1.2 -m "发布 v0.1.2"
-git push origin v0.1.2
+git tag -a v0.1.3 -m "发布 v0.1.3"
+git push origin v0.1.3
 ```
 
 | 文件 | 用途 |

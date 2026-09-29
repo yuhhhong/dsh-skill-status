@@ -31,7 +31,7 @@ To uninstall:
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-The current plugin version is `0.1.2`, targeting DSH `0.1.7-rc.2`.
+The current plugin version is `0.1.3`, targeting DSH `0.1.7-rc.2`.
 
 ## Status meanings
 
@@ -74,8 +74,8 @@ Pushing a `v`-prefixed tag triggers the [release workflow](<.github/workflows/re
 Before releasing, write that version's section in the [changelog](<./CHANGELOG.md>), commit `lib/`, and push the tag. The workflow fails before publishing when the tag disagrees with the `package.json` version or the changelog lacks that version's section.
 
 ```sh
-git tag -a v0.1.2 -m "Release v0.1.2"
-git push origin v0.1.2
+git tag -a v0.1.3 -m "Release v0.1.3"
+git push origin v0.1.3
 ```
 
 | File | Purpose |
