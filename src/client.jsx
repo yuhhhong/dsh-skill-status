@@ -52,7 +52,7 @@ export function SkillPanel({ state }) {
   return <section className="dsh-skills" aria-label="当前会话技能状态">
     <div className="dsh-skills-summary"><strong>技能</strong><span>已确认加载 {data.loadedCount} 个</span></div>
     <p className="dsh-skills-muted">仅检查主助手通过正式入口加载的完整技能正文。</p>
-    {data.uncertain && <p className="dsh-skills-notice" role="status">部分状态无法确认，计数仅包含已核实的技能。</p>}
+    {data.issues?.map(issue => <p key={issue.code} className="dsh-skills-notice" role="status">{issue.message}</p>)}
     {data.note && <p className="dsh-skills-muted">{data.note}</p>}
     <label className="dsh-skills-search">筛选技能<input value={filter} onChange={event => setFilter(event.target.value)} placeholder="输入技能名称或说明" /></label>
     {!rows.length && <p className="dsh-skills-muted">{filter ? '没有匹配的技能。' : data.uncertain ? '目前没有可核实的技能条目。' : '当前没有可用技能或正式加载记录。'}</p>}
@@ -63,9 +63,13 @@ export function SkillPanel({ state }) {
 function SkillRow({ row }) {
   const [selected, setSelected] = useState(null);
   const version = row.versions.find(item => item.id === selected) ?? row.versions[0];
-  const directoryLabel = row.directoryState === 'absent' ? '未在当前技能目录中' : row.directoryState === 'unknown' ? '当前目录无法确认' : null;
+  const directoryLabel = row.directoryState === 'absent' ? '未在当前技能目录中' : null;
   return <details className="dsh-skills-row">
-    <summary><span className="dsh-skills-name">{row.name}</span><span className={`dsh-skills-state dsh-skills-${row.state}`}>{labels[row.state]}</span></summary>
+    <summary>
+      <span className="dsh-skills-name">{row.name}</span><span className={`dsh-skills-state dsh-skills-${row.state}`}>{labels[row.state]}</span>
+      {row.directoryState === 'unknown' && <span className="dsh-skills-state dsh-skills-unknown"> · 目录待确认</span>}
+      {!!row.issues?.length && <span className="dsh-skills-row-issues">{row.issues.map(issue => <span key={issue.code} className="dsh-skills-notice">{issue.message}</span>)}</span>}
+    </summary>
     {directoryLabel && <p className="dsh-skills-muted">{directoryLabel}</p>}
     {row.description && <p>{row.description}</p>}
     {row.catalogSource && <details className="dsh-skills-source"><summary>查看当前目录来源</summary><pre>{row.catalogSource}</pre>
@@ -78,8 +82,8 @@ function SkillRow({ row }) {
         {row.versions.map((item, index) => <option key={item.id} value={item.id}>{index === 0 ? '最近加载' : `版本 ${row.versions.length - index}`} · {new Date(item.time).toLocaleString()} · {labels[item.state]}</option>)}
       </select></label>
       <p className="dsh-skills-muted">{version.entry === 'user' ? '用户调用' : 'skill 工具'} · 加载 {version.loadCount} 次 · {labels[version.state]}</p>
-      <p><strong>{version.state === 'loaded' ? '上下文正文' : '历史正文'}</strong>{version.reason ? ` · ${version.reason}` : ''}</p>
-      {version.state === 'unknown' && <p className="dsh-skills-notice">无法确认这版完整正文是否仍在当前上下文中。</p>}
+      <p><strong>{version.state === 'loaded' ? '上下文正文' : '历史正文'}</strong>{version.state !== 'unknown' && version.reason ? ` · ${version.reason}` : ''}</p>
+      {version.state === 'unknown' && <p className="dsh-skills-notice">{version.reason ?? '无法确认这版完整正文是否仍在当前上下文中。'}</p>}
       {version.body === null ? <p>无法取得加载时的完整正文。</p> : <pre className="dsh-skills-body">{version.body}</pre>}
       <details className="dsh-skills-source"><summary>查看加载时的来源</summary><pre>{version.resource ?? '来源状态未知：历史记录未保留可核实的来源。'}</pre>
         <p className="dsh-skills-muted">资源指引不一定包含源文件路径；未取得确切路径时，无法判断源文件是否存在。</p>
@@ -131,6 +135,8 @@ const CSS_TEXT = `
 .dsh-skills input,.dsh-skills select { min-width:0; width:100%; box-sizing:border-box; padding:8px; border:1px solid var(--dsw-alias-border-l1); border-radius:7px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-layer-1); font:inherit; }
 .dsh-skills-row { border-top:1px solid var(--dsw-alias-border-l1); padding:12px 0; overflow-wrap:anywhere; }
 .dsh-skills-row>summary { cursor:pointer; }
+.dsh-skills-row-issues { display:block; margin-top:4px; }
+.dsh-skills-row-issues>span { display:block; }
 .dsh-skills-name { font-weight:600; margin-right:10px; }
 .dsh-skills-state { font-size:12px; color:var(--dsw-alias-label-secondary); }
 .dsh-skills-loaded { color:var(--dsw-alias-state-success-primary); }

@@ -31,7 +31,7 @@ To uninstall:
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-The current plugin version is `0.1.3`, targeting DSH `0.1.7-rc.2`.
+The current plugin version is `0.1.4`, targeting DSH `0.1.7-rc.2`.
 
 ## Status meanings
 
@@ -45,6 +45,8 @@ The plugin UI currently uses Chinese labels.
 | 无法确认 (Unknown) | Evidence from history, the body, or the current context is insufficient. |
 
 In the header, `…` means the first result is pending. `?` means a query failed or some scope remains unverified. `2 · ?` means two skills are confirmed loaded, with some status still unresolved.
+
+Issues attributable to a skill appear directly in its collapsed row, such as a missing original body, indirect-call logs without the original body, ambiguous body matching, or an unavailable context snapshot. Loading and catalog status are separate: `已加载 · 目录待确认` means the body is confirmed retained while catalog membership remains unverified, without reducing the loaded count. Uncertainty affecting only other versions is labeled `其他版本` (Other versions). Incomplete history or catalog data can hide entries altogether, so those gaps retain specific panel-wide notices instead of a generic partial-status warning.
 
 Ordinary file reads do not count as official loading evidence. A compaction summary mentioning a skill or a successful past load does not, by itself, prove that the full body remains in context. Whether referenced materials have been read does not affect the main-body completeness check.
 
@@ -74,8 +76,8 @@ Pushing a `v`-prefixed tag triggers the [release workflow](<.github/workflows/re
 Before releasing, write that version's section in the [changelog](<./CHANGELOG.md>), commit `lib/`, and push the tag. The workflow fails before publishing when the tag disagrees with the `package.json` version or the changelog lacks that version's section.
 
 ```sh
-git tag -a v0.1.3 -m "Release v0.1.3"
-git push origin v0.1.3
+git tag -a v0.1.4 -m "Release v0.1.4"
+git push origin v0.1.4
 ```
 
 | File | Purpose |

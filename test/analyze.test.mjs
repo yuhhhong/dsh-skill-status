@@ -186,3 +186,112 @@ test('内容投影修改正文后按派生消息更新，不只检查表层成�
   assert.equal(f.session.surface.nodes.includes(original.seq), true);
   assert.equal(inspect(f).skills[0].state, 'removed');
 });
+
+test('完整证据不产生问题，历史缺口只影响未确认加载行并保留全局提示', () => {
+  const f = fixture();
+  f.tool();
+  const catalog = [catalogSkill(), catalogSkill('unused')];
+  const ready = inspect(f, { catalog });
+  assert.deepEqual(ready.issues, []);
+  assert.ok(ready.skills.every(row => row.issues.length === 0));
+  const result = inspect(f, { catalog, historyComplete: false });
+  assert.equal(result.loadedCount, 1);
+  assert.equal(result.skills[0].state, 'loaded');
+  assert.deepEqual(result.skills[0].issues, []);
+  assert.equal(result.skills[1].state, 'unknown');
+  assert.deepEqual(result.skills[1].issues.map(item => item.code), ['history_incomplete']);
+  assert.deepEqual(result.issues.map(item => item.scope), ['history']);
+  assert.match(result.issues[0].message, /遗漏正式加载记录/);
+});
+
+test('目录不完整在各行和全局分别提示，不改变已加载状态或计数', () => {
+  const f = fixture();
+  f.tool();
+  const result = inspect(f, { catalog: [catalogSkill(), catalogSkill('unused')], catalogComplete: false });
+  assert.equal(result.loadedCount, 1);
+  assert.deepEqual(result.skills.map(row => row.state), ['loaded', 'absent']);
+  assert.ok(result.skills.every(row => row.issues[0].code === 'catalog_incomplete' && row.issues[0].scope === 'catalog'));
+  assert.match(result.skills[0].issues[0].message, /该技能的目录状态/);
+  assert.deepEqual(result.issues.map(item => item.code), ['catalog_incomplete']);
+  assert.match(result.issues[0].message, /列表可能有遗漏/);
+});
+
+test('正文未知区分完整原文缺失、间接日志副本与正文比对歧义', () => {
+  const missing = fixture();
+  missing.tool('demo', '不完整的技能包装');
+  const indirect = fixture();
+  indirect.append('tool/ptc-dispatch', { rootCallId: 'root', subCallId: 'nested', name: 'skill', arguments: { name: 'demo' } });
+  const ambiguous = fixture();
+  const original = ambiguous.tool('demo', render('demo', 'demo'));
+  ambiguous.user('摘要：之前使用 demo。', { kind: 'compaction' }, {
+    surfaceOp: { op: 'replace', startSeq: original.seq, endSeq: original.seq }, sourceEventSeqs: [original.seq],
+  });
+  for (const [f, code, description] of [[missing, 'body_original_missing', /完整原文/],
+    [indirect, 'body_indirect_log', /间接调用的日志副本/], [ambiguous, 'body_ambiguous', /比对存在歧义/]]) {
+    const result = inspect(f);
+    const row = result.skills[0];
+    assert.equal(row.state, 'unknown');
+    assert.equal(row.issues[0].code, code);
+    assert.equal(row.issues[0].scope, 'body');
+    assert.match(row.versions[0].reason, description);
+    assert.equal(row.versions[0].reason, row.issues[0].message);
+    assert.deepEqual(result.issues, []);
+  }
+});
+
+test('已加载行的其他未知版本明确归属，不把已加载版本说成未知', () => {
+  const f = fixture();
+  f.tool();
+  f.tool('demo', '缺少完整原文');
+  f.tool('demo', '另一个缺少完整原文的版本');
+  const result = inspect(f);
+  const row = result.skills[0];
+  assert.equal(row.state, 'loaded');
+  assert.equal(result.loadedCount, 1);
+  assert.equal(result.uncertain, false);
+  assert.deepEqual(row.issues.map(item => item.code), ['body_original_missing']);
+  assert.match(row.issues[0].message, /^其他版本：/);
+  assert.doesNotMatch(row.versions[0].reason, /^其他版本：/);
+  assert.deepEqual(result.issues, []);
+});
+
+test('同一版本的完整副本消除其他加载次数的歧义提示', () => {
+  for (const loadedFirst of [true, false]) {
+    const f = fixture();
+    if (loadedFirst) f.tool('demo', render('demo', 'demo'));
+    const original = f.tool('demo', render('demo', 'demo'));
+    f.user('摘要：之前使用 demo。', { kind: 'compaction' }, {
+      surfaceOp: { op: 'replace', startSeq: original.seq, endSeq: original.seq }, sourceEventSeqs: [original.seq],
+    });
+    if (!loadedFirst) f.tool('demo', render('demo', 'demo'));
+    const row = inspect(f).skills[0];
+    assert.equal(row.versions.length, 1);
+    assert.equal(row.versions[0].state, 'loaded');
+    assert.equal(row.versions[0].reason, null);
+    assert.deepEqual(row.issues, []);
+  }
+});
+
+test('上下文问题优先归属历史版本行，没有历史版本时保留全局提示', () => {
+  const f = fixture();
+  f.tool();
+  const withHistory = inspect(f, { messages: undefined });
+  assert.deepEqual(withHistory.issues, []);
+  assert.deepEqual(withHistory.skills[0].issues.map(item => item.code), ['context_unavailable']);
+  assert.equal(withHistory.skills[0].versions[0].reason, withHistory.skills[0].issues[0].message);
+  for (const catalog of [[], [catalogSkill()]]) {
+    const result = analyze({ events: [], messages: undefined, catalog, catalogComplete: true });
+    assert.deepEqual(result.issues.map(item => item.code), ['context_unavailable']);
+    assert.ok(result.skills.every(row => row.issues.length === 0));
+  }
+  assert.deepEqual(analyze({ messages: [], catalogComplete: true }).issues, []);
+});
+
+test('原文缺失与上下文不可用同时发生时保留两类行级问题', () => {
+  const f = fixture();
+  f.tool('demo', '缺少完整原文');
+  const result = inspect(f, { messages: undefined });
+  assert.deepEqual(result.skills[0].issues.map(item => item.code), ['body_original_missing', 'context_unavailable']);
+  assert.match(result.skills[0].versions[0].reason, /完整原文/);
+  assert.deepEqual(result.issues, []);
+});

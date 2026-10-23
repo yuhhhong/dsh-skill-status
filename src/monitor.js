@@ -1,12 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import { analyze } from './analyze.js';
 
+const readIssues = {
+  history: { code: 'history_read_failed', scope: 'history', message: '会话记录暂时无法读取，可能遗漏正式加载记录；稍后自动重试。' },
+  context: { code: 'context_unavailable', scope: 'context', message: '会话记录暂时无法读取，无法取得当前上下文。' },
+  changing: { code: 'context_changing', scope: 'context', message: '会话正在变化，暂时无法取得一致的当前上下文；稍后自动重新核实。' },
+  projection: { code: 'context_projection_failed', scope: 'context', message: '当前上下文消息投影失败，无法核实完整正文是否保留。' },
+  restore: { code: 'context_restore_failed', scope: 'context', message: '会话恢复失败，暂时无法取得当前上下文。' },
+};
+
 // 异步观察与同步正文比对分开；序号变化时重试，绝不拼接不同时间点的证据。
 export async function readStatus(ctx, sessionId, signal) {
   let lastEvents = [];
   let lastCatalog = [];
   let catalogComplete = false;
   let historyComplete = false;
+  let historyIssue;
+  let contextIssue;
   let header;
   for (let attempt = 0; attempt < 3; attempt++) {
     signal?.throwIfAborted();
@@ -16,7 +26,12 @@ export async function readStatus(ctx, sessionId, signal) {
       lastEvents = log.events;
       header = log.session;
       historyComplete = true;
+      historyIssue = undefined;
+      contextIssue = readIssues.changing;
     } catch {
+      historyComplete = false;
+      historyIssue = readIssues.history;
+      contextIssue = readIssues.context;
       break;
     }
     if (header.origin === 'subagent') return { ...analyze({}), sessionId, excluded: true, note: '此面板仅查看主助手会话。' };
@@ -41,12 +56,12 @@ export async function readStatus(ctx, sessionId, signal) {
     if (!session) {
       try {
         session = ctx.sessions.prepare(sessionId, { seed: log.events, meta: header, inheritedEventCount: log.inheritedEventCount, eventState: 'detached' });
-      } catch { continue; }
+      } catch { contextIssue = readIssues.restore; continue; }
     }
     if ((live ? live.seq : session.firstLiveSeq) !== log.events.length || ctx.sessions.get(sessionId) !== live || ctx.agents.get(sessionId) !== agent) continue;
     let messages;
-    try { messages = session.deriveMessages(); } catch { /* 缺失消息投影时保持无法确认。 */ }
-    const result = analyze({ events: log.events, messages, catalog: lastCatalog, catalogComplete, historyComplete });
+    try { messages = session.deriveMessages(); } catch { contextIssue = readIssues.projection; }
+    const result = analyze({ events: log.events, messages, catalog: lastCatalog, catalogComplete, historyComplete, contextIssue });
     await Promise.all(result.skills.map(async row => {
       if (!row.catalogPath) return;
       try {
@@ -55,18 +70,23 @@ export async function readStatus(ctx, sessionId, signal) {
       } catch { row.catalogSourceState = 'unknown'; }
     }));
     signal?.throwIfAborted();
+    contextIssue = readIssues.changing;
     if (!live) {
       try {
         const latest = await ctx.sessionQuery.readSession(sessionId);
         if (latest.events.length !== log.events.length || JSON.stringify(latest.events.at(-1)) !== JSON.stringify(log.events.at(-1)) || JSON.stringify(latest.session) !== JSON.stringify(header)) continue;
-      } catch { continue; }
+      } catch {
+        historyComplete = false;
+        historyIssue = readIssues.history;
+        contextIssue = readIssues.context;
+        continue;
+      }
     }
     if ((live && live.seq !== log.events.length) || ctx.sessions.get(sessionId) !== live || ctx.agents.get(sessionId) !== agent) continue;
     return { ...result, sessionId, asOfSeq: log.events.length - 1,
-      note: !messages ? '当前上下文暂时无法核实。' : !agent ? '已按保存记录核对正文；技能目录按此会话预设查询。' : null };
+      note: messages && !agent ? '已按保存记录核对正文；技能目录按此会话预设查询。' : null };
   }
-  return { ...analyze({ events: lastEvents, catalog: lastCatalog, catalogComplete, historyComplete }), sessionId,
-    note: historyComplete ? '会话正在变化，稍后自动重新核实。' : '会话记录暂时无法读取，稍后自动重试。' };
+  return { ...analyze({ events: lastEvents, catalog: lastCatalog, catalogComplete, historyComplete, historyIssue, contextIssue }), sessionId, note: null };
 }
 
 export class StatusMonitor {

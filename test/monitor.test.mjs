@@ -30,6 +30,10 @@ test('持续变化时保守降级，不把旧快照声明为当前', async () =>
   const result = await readStatus(f.ctx, f.session.id);
   assert.equal(result.contextComplete, false);
   assert.equal(result.skills[0].state, 'unknown');
+  assert.deepEqual(result.skills[0].issues.map(item => item.code), ['context_changing']);
+  assert.match(result.skills[0].versions[0].reason, /会话正在变化/);
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.note, null);
 });
 
 test('读取失败时不误报从未加载', async () => {
@@ -38,6 +42,9 @@ test('读取失败时不误报从未加载', async () => {
   const result = await readStatus(f.ctx, f.session.id);
   assert.equal(result.historyComplete, false);
   assert.equal(result.uncertain, true);
+  assert.deepEqual(result.issues.map(item => item.code), ['history_read_failed', 'catalog_incomplete', 'context_unavailable']);
+  assert.match(result.issues[0].message, /会话记录暂时无法读取/);
+  assert.equal(result.note, null);
 });
 
 test('消息投影不可用时保留历史并显示无法确认', async () => {
@@ -47,6 +54,10 @@ test('消息投影不可用时保留历史并显示无法确认', async () => {
   const result = await readStatus(f.ctx, f.session.id);
   assert.equal(result.skills[0].state, 'unknown');
   assert.ok(result.skills[0].versions[0].body);
+  assert.deepEqual(result.skills[0].issues.map(item => item.code), ['context_projection_failed']);
+  assert.match(result.skills[0].versions[0].reason, /消息投影失败/);
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.note, null);
 });
 
 test('冷会话按真实恢复实现和预设作用域读取，释放租约', async () => {
@@ -80,7 +91,13 @@ test('源文件缺失和读取失败分别展示，历史正文不被覆盖', as
   assert.equal(missing.skills[0].catalogSourceState, 'missing');
   assert.equal(missing.loadedCount, 1);
   f.ctx.fs.stat = async () => { throw new Error('访问失败'); };
-  assert.equal((await readStatus(f.ctx, f.session.id)).skills[0].catalogSourceState, 'unknown');
+  const inaccessible = await readStatus(f.ctx, f.session.id);
+  assert.equal(inaccessible.skills[0].catalogSourceState, 'unknown');
+  assert.equal(inaccessible.skills[0].state, 'loaded');
+  assert.equal(inaccessible.loadedCount, 1);
+  assert.equal(inaccessible.uncertain, false);
+  assert.deepEqual(inaccessible.skills[0].issues, []);
+  assert.deepEqual(inaccessible.issues, []);
 });
 
 test('事件唤醒等待中的客户端，无须下一次模型请求', async () => {
@@ -140,4 +157,76 @@ test('宿主只注册认证通道上的精确路径，卸载移除接口', async
   assert.equal(response.rpcId, 'test');
   for (const dispose of disposers.reverse()) await dispose();
   assert.equal(removed, true);
+});
+
+test('没有历史版本时消息投影失败保留全局上下文提示', async () => {
+  const f = fixture();
+  f.session.deriveMessages = () => { throw new Error('缺少投影'); };
+  const result = await readStatus(f.ctx, f.session.id);
+  assert.deepEqual(result.issues.map(item => item.code), ['context_projection_failed']);
+  assert.deepEqual(result.skills[0].issues, []);
+  assert.equal(result.note, null);
+});
+
+test('目录读取失败不改变已加载状态，行级与全局都保留目录问题', async () => {
+  const f = fixture();
+  f.tool();
+  f.ctx.skills.snapshot = async () => { throw new Error('目录读取失败'); };
+  const result = await readStatus(f.ctx, f.session.id);
+  assert.equal(result.loadedCount, 1);
+  assert.equal(result.skills[0].state, 'loaded');
+  assert.equal(result.catalogComplete, false);
+  assert.deepEqual(result.skills[0].issues.map(item => item.code), ['catalog_incomplete']);
+  assert.deepEqual(result.issues.map(item => item.code), ['catalog_incomplete']);
+});
+
+test('冷会话恢复失败不能误报为会话持续变化', async () => {
+  const f = fixture();
+  f.tool();
+  f.ctx.sessions.get = () => undefined;
+  f.ctx.sessions.prepare = () => { throw new Error('恢复失败'); };
+  const result = await readStatus(f.ctx, f.session.id);
+  assert.deepEqual(result.skills[0].issues.map(item => item.code), ['context_restore_failed']);
+  assert.match(result.skills[0].versions[0].reason, /会话恢复失败/);
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.note, null);
+});
+
+test('重试中记录读取失败优先于之前的会话变化原因', async () => {
+  const f = fixture();
+  f.tool();
+  const read = f.ctx.sessionQuery.readSession;
+  let reads = 0;
+  f.ctx.sessionQuery.readSession = async () => {
+    if (++reads > 1) throw new Error('读取失败');
+    return read();
+  };
+  f.ctx.skills.snapshot = async () => {
+    f.user('并发写入');
+    return { skills: [catalogSkill()], complete: true };
+  };
+  const result = await readStatus(f.ctx, f.session.id);
+  assert.equal(result.loadedCount, 0);
+  assert.equal(result.historyComplete, false);
+  assert.deepEqual(result.issues.map(item => item.code), ['history_read_failed']);
+  assert.deepEqual(result.skills[0].issues.map(item => item.code), ['history_read_failed', 'context_unavailable']);
+  assert.match(result.skills[0].versions[0].reason, /会话记录暂时无法读取/);
+});
+
+test('冷会话二次读取持续失败时保留记录失败原因', async () => {
+  const f = fixture();
+  f.tool();
+  f.ctx.sessions.get = () => undefined;
+  const read = f.ctx.sessionQuery.readSession;
+  let reads = 0;
+  f.ctx.sessionQuery.readSession = async () => {
+    if (++reads % 2 === 0) throw new Error('核验读取失败');
+    return read();
+  };
+  const result = await readStatus(f.ctx, f.session.id);
+  assert.equal(reads, 6);
+  assert.equal(result.historyComplete, false);
+  assert.deepEqual(result.issues.map(item => item.code), ['history_read_failed']);
+  assert.deepEqual(result.skills[0].issues.map(item => item.code), ['history_read_failed', 'context_unavailable']);
+  assert.match(result.skills[0].versions[0].reason, /会话记录暂时无法读取/);
 });

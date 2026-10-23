@@ -6,6 +6,15 @@ export const statusLabels = {
 
 const textOf = (message) => (message?.content ?? []).filter(block => block.type === 'text').map(block => block.text).join('');
 const decode = (value) => value.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&amp;', '&');
+const issue = (code, scope, message) => ({ code, scope, message });
+const historyIncomplete = issue('history_incomplete', 'history', '加载历史不完整，可能遗漏正式加载记录。');
+const catalogIncomplete = issue('catalog_incomplete', 'catalog', '技能目录查询不完整，列表可能有遗漏。');
+const contextUnavailable = issue('context_unavailable', 'context', '当前上下文暂时无法取得，无法核实完整正文是否保留。');
+const bodyIssues = {
+  missing: issue('body_original_missing', 'body', '加载记录未保留可核实的完整原文。'),
+  indirect: issue('body_indirect_log', 'body', '仅保留间接调用的日志副本，无法核实加载时的完整原文。'),
+  ambiguous: issue('body_ambiguous', 'body', '正文比对存在歧义，无法确认完整正文是否保留。'),
+};
 
 // 仅拆解正式入口的规范包装；主正文原样保留，允许正文自己包含闭合标签。
 export function parseSkillContent(text, name) {
@@ -65,7 +74,7 @@ export function collectHistory(events) {
     const parsed = event.surfaceOp === 'append' ? parseSkillContent(textOf(message), name) : undefined;
     const digest = createHash('sha256').update(JSON.stringify([name, parsed?.body, parsed?.resource, parsed ? null : event.seq])).digest('hex');
     records.push({ name, id: digest, seq: event.seq, time: event.time, messageId: message.id,
-      callId: message.toolCallId, entry, body: parsed?.body ?? null, resource: parsed?.resource ?? null });
+      callId: message.toolCallId, entry, indirect: event.type === 'tool/ptc-dispatch', body: parsed?.body ?? null, resource: parsed?.resource ?? null });
   }
   return { records, complete };
 }
@@ -100,10 +109,12 @@ function containsInstructions(message, record) {
   return true;
 }
 
-export function analyze({ events = [], messages, catalog = [], catalogComplete = false, historyComplete = true }) {
+export function analyze({ events = [], messages, catalog = [], catalogComplete = false, historyComplete = true,
+  historyIssue = historyIncomplete, contextIssue = contextUnavailable }) {
   const history = collectHistory(events);
   const complete = historyComplete && history.complete;
   const rows = new Map();
+  const versionIssues = new Map();
   for (const skill of catalog) {
     if (!skill.invocation?.modelInvocable && !skill.invocation?.userInvocable) continue;
     rows.set(skill.name, { name: skill.name, description: skill.description, inCatalog: true,
@@ -116,16 +127,24 @@ export function analyze({ events = [], messages, catalog = [], catalogComplete =
     const evidence = record.body === null ? [] : candidates.map(message => containsInstructions(message, record));
     const retained = evidence.includes(true);
     const state = retained ? 'loaded' : !messages || record.body === null || evidence.includes(undefined) ? 'unknown' : 'removed';
-    const reason = state === 'removed' ? (candidates.some(message => message.role === 'tool' && message.toolCallId === record.callId) ? '正文已被裁剪或修改' : '正文已离开当前上下文') : null;
+    const unknownIssue = state !== 'unknown' ? null : record.body === null
+      ? bodyIssues[record.indirect ? 'indirect' : 'missing'] : !messages ? contextIssue : bodyIssues.ambiguous;
+    const reason = unknownIssue?.message ?? (state === 'removed'
+      ? (candidates.some(message => message.role === 'tool' && message.toolCallId === record.callId) ? '正文已被裁剪或修改' : '正文已离开当前上下文') : null);
     const existing = row.versions.find(version => version.id === record.id);
     if (existing) {
       existing.loadCount++;
       existing.seq = record.seq;
       existing.time = record.time;
-      if (state === 'loaded' || (existing.state !== 'loaded' && state === 'unknown')) { existing.state = state; existing.reason = reason; }
+      if (state === 'loaded' || (existing.state !== 'loaded' && state === 'unknown')) {
+        existing.state = state;
+        existing.reason = reason;
+        versionIssues.set(record.id, unknownIssue);
+      }
     } else {
       row.versions.push({ id: record.id, seq: record.seq, time: record.time, body: record.body,
         resource: record.resource, entry: record.entry, state, reason, loadCount: 1 });
+      versionIssues.set(record.id, unknownIssue);
     }
     rows.set(record.name, row);
   }
@@ -134,12 +153,25 @@ export function analyze({ events = [], messages, catalog = [], catalogComplete =
     const state = row.versions.some(version => version.state === 'loaded') ? 'loaded'
       : !complete || row.versions.some(version => version.state === 'unknown') ? 'unknown'
       : row.versions.length ? 'removed' : 'absent';
-    return { ...row, state, directoryState: !catalogComplete ? 'unknown' : row.inCatalog ? 'present' : 'absent', sourceState: 'unknown' };
+    const issues = [];
+    if (!complete && state !== 'loaded') issues.push({ ...historyIssue });
+    if (!catalogComplete) issues.push({ ...catalogIncomplete, message: '当前技能目录查询不完整，无法确认该技能的目录状态。' });
+    for (const version of row.versions) {
+      const problem = versionIssues.get(version.id);
+      if (version.state !== 'unknown' || !problem || issues.some(item => item.code === problem.code)) continue;
+      issues.push({ ...problem, message: state === 'loaded' ? `其他版本：${problem.message}` : problem.message });
+    }
+    if (!messages && row.versions.length && !issues.some(item => item.code === contextIssue.code)) issues.push({ ...contextIssue });
+    return { ...row, state, issues, directoryState: !catalogComplete ? 'unknown' : row.inCatalog ? 'present' : 'absent', sourceState: 'unknown' };
   }).sort((left, right) =>
     // 已加载的技能排在前面；同组内按名称排序，状态变化时只调整组间位置。
     Number(right.state === 'loaded') - Number(left.state === 'loaded')
     || left.name.localeCompare(right.name, 'zh-CN'));
-  return { skills, loadedCount: skills.filter(row => row.state === 'loaded').length,
+  const issues = [];
+  if (!complete) issues.push({ ...historyIssue });
+  if (!catalogComplete) issues.push({ ...catalogIncomplete });
+  if (!messages && !skills.some(row => row.versions.length)) issues.push({ ...contextIssue });
+  return { skills, issues, loadedCount: skills.filter(row => row.state === 'loaded').length,
     uncertain: !complete || !catalogComplete || !messages || skills.some(row => row.state === 'unknown'),
     historyComplete: complete, catalogComplete, contextComplete: !!messages };
 }
