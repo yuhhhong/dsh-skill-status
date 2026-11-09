@@ -1,5 +1,7 @@
 # dsh-skill-status
 
+[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+
 [中文](<./README.md>) | English
 
 A session skill status plugin for DeepSeek Harness (DSH). It shows the number of confirmed loaded skills in the conversation header. Click **技能** (Skills) to open the right sidebar and check whether each skill's full main body remains in the current main assistant context, along with its recorded versions and sources.
