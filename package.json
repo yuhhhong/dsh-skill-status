@@ -1,11 +1,11 @@
 {
   "name": "dsh-skill-status",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "查看当前主助手会话中技能完整正文的加载状态、历史版本与来源",
   "type": "module",
   "main": "./lib/index.js",
-  "exports": { ".": "./lib/index.js", "./client": "./lib/client.js", "./package.json": "./package.json" },
-  "files": ["lib", "cordis.patch.yml", "*.md"],
+  "exports": { ".": "./lib/index.js", "./client": "./lib/client.js", "./package.json": "./package.json", "./icon": "./icon.svg", "./locale/*.json": "./locale/*.json" },
+  "files": ["lib", "cordis.patch.yml", "*.md", "icon.svg", "locale/*.json"],
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },
     "client": {
@@ -16,7 +16,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node scripts/build.mjs && node --test test/*.test.mjs",
-    "check": "node --check src/index.js && node --check src/analyze.js && node --check src/monitor.js",
+    "check": "node --check src/index.js && node --check src/analyze.js && node --check src/monitor.js && node --check src/translation.js && node --check src/translation-runtime.js && node --check src/translation-text.js && node --check src/translation-client.js",
     "prepack": "node scripts/build.mjs"
   },
   "peerDependencies": { "@deepseek-ai/dsh": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0" },

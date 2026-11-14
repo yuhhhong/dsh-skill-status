@@ -5,7 +5,7 @@ import { mkdir, copyFile, writeFile } from 'node:fs/promises';
 const outDir = process.env.DSH_SKILL_STATUS_OUT_DIR ?? 'lib';
 
 await mkdir(outDir, { recursive: true });
-for (const name of ['index', 'analyze', 'monitor']) await copyFile(`src/${name}.js`, `${outDir}/${name}.js`);
+for (const name of ['index', 'analyze', 'monitor', 'translation', 'translation-runtime', 'translation-text']) await copyFile(`src/${name}.js`, `${outDir}/${name}.js`);
 const result = await build({
   entryPoints: ['src/client.jsx'], bundle: true, write: false, format: 'cjs', platform: 'browser',
   target: 'es2022', external: ['react'], jsx: 'transform', legalComments: 'none',

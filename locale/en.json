@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Skill status",
+    "description": "View skill loading status, historical versions, and sources in the current assistant session."
+  }
+}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36" fill="none">
+  <rect x="7" y="8" width="22" height="20" rx="3" fill="url(#dsh-skill-status-sheet)" />
+  <path d="M10.5 13.5H21.5M10.5 17.5H17.5" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" />
+  <path d="m19.6 22.1 2.4 2.4 4.1-4.9" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+  <defs>
+    <linearGradient id="dsh-skill-status-sheet" x1="8" y1="9" x2="28" y2="27" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6FB2EE" />
+      <stop offset="1" stop-color="#3E58D6" />
+    </linearGradient>
+  </defs>
+</svg>

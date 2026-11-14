@@ -4,7 +4,7 @@
 
 [中文](<./README.md>) | English
 
-A session skill status plugin for DeepSeek Harness (DSH). It shows the number of confirmed loaded skills in the conversation header. Click **技能** (Skills) to open the right sidebar and check whether each skill's full main body remains in the current main assistant context, along with its recorded versions and sources.
+A session skill status plugin for DeepSeek Harness (DSH). It shows the number of confirmed loaded skills in the conversation header. Click **技能** (Skills) to open the right sidebar and check whether each skill's full main body remains in the current main assistant context, along with its recorded versions and sources. You can also translate skill bodies on demand.
 
 ## Features
 
@@ -14,6 +14,7 @@ A session skill status plugin for DeepSeek Harness (DSH). It shows the number of
 - Shows historical body versions, load counts, and resource guidance recorded at load time. Multiple versions of one skill count as one skill.
 - Displays load-time sources separately from current catalog sources. Later edits to source files do not replace historical bodies.
 - Updates on session events and rechecks catalog and file status every five seconds during quiet periods.
+- Translates the body you are viewing through Bing or Google, with target language settings, original/translation switching, chunk progress, and retries for unfinished chunks only.
 
 The plugin only queries skill status for the current main assistant. It does not load, reload, or unload skills, or modify session content.
 
@@ -33,7 +34,28 @@ To uninstall:
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-The current plugin version is `0.1.4`, targeting DSH `0.1.7-rc.2`.
+The current plugin version is `0.1.5`. The supported DSH range is `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`. Within that range, skill body translation requires `0.2.2-rc.2` or later. Earlier versions still support skill status queries but do not show the translation controls.
+
+## Skill body translation
+
+First enable **思考过程机器翻译** (Thinking process machine translation) in DSH's **插件** (Plugins) page. Expand a skill entry, then click **机翻** (Translate) next to **上下文正文** (Context body) or **历史正文** (Historical body). The body is translated in chunks, with each completed chunk shown as it arrives. Unfinished or failed chunks keep the original text and show a status message.
+
+During translation, click **取消** (Cancel) to stop, or switch between **查看原文** (View original) and **查看译文** (View translation). After cancellation or failure, click **重试未完成块** (Retry unfinished chunks) to continue. Successfully translated chunks are reused.
+
+Open this plugin's details on the Plugins page to configure:
+
+- Translation service: Bing or Google. The default is Bing.
+- Target language: follows the DSH interface language by default, or accepts a language code such as `zh-CN`, `en`, or `ja`.
+
+Click **保存** (Save) to apply both settings together. Settings persist across restarts. Collapsing a skill entry, switching body versions, or closing the panel cancels unfinished translation requests. Successful chunks are cached only in host memory and cleared when DSH restarts or this plugin is unloaded.
+
+If the translation service is not enabled when you click Translate, the plugin displays:
+
+> 未检测到翻译服务。请前往「插件」启用「思考过程机器翻译」
+
+This means: “No translation service detected. Go to Plugins and enable Thinking process machine translation.” Enable it, then click Translate again to recheck.
+
+Translations are for reading only. They do not change the skill's original text, source, or loading status, and are not written into the session context. Code, commands, paths, and link destinations are kept unchanged.
 
 ## Status meanings
 
@@ -48,7 +70,7 @@ The plugin UI currently uses Chinese labels.
 
 In the header, `…` means the first result is pending. `?` means a query failed or some scope remains unverified. `2 · ?` means two skills are confirmed loaded, with some status still unresolved.
 
-Issues attributable to a skill appear directly in its collapsed row, such as a missing original body, indirect-call logs without the original body, ambiguous body matching, or an unavailable context snapshot. Loading and catalog status are separate: `已加载 · 目录待确认` means the body is confirmed retained while catalog membership remains unverified, without reducing the loaded count. Uncertainty affecting only other versions is labeled `其他版本` (Other versions). Incomplete history or catalog data can hide entries altogether, so those gaps retain specific panel-wide notices instead of a generic partial-status warning.
+Issues attributable to a skill appear directly in its collapsed row, such as a missing original body, indirect-call logs without the original body, ambiguous body matching, or an unavailable context snapshot. Loading and catalog status are separate: `已加载 · 目录待确认` means the body is confirmed retained while catalog membership remains unverified, without reducing the loaded count. Uncertainty affecting only other versions is labeled `其他版本` (Other versions). Incomplete history or catalog data can hide entries altogether, so the panel shows separate notices for those gaps.
 
 Ordinary file reads do not count as official loading evidence. A compaction summary mentioning a skill or a successful past load does not, by itself, prove that the full body remains in context. Whether referenced materials have been read does not affect the main-body completeness check.
 
@@ -65,37 +87,37 @@ pnpm test
 
 `pnpm test` builds the project before running tests. `pnpm pack` also builds automatically through `prepack`. Building this project does not automatically update a running DSH page.
 
-The built `lib/` artifacts are committed to the repository — do not delete or ignore them. When pnpm installs a dependency from a git source, it checks whether the file `main` points at (`lib/index.js`) exists: if it does not, pnpm decides the package needs its build scripts and demands `allowBuilds` authorization; if it does, pnpm skips the build stage entirely. Keeping `lib/` committed is therefore what makes installation from GitHub require no build approval. `prepack` stays, because publishing to npm needs it to rebuild.
+The built `lib/` artifacts are committed to the repository. Do not delete or ignore them. When pnpm installs a dependency from a git source, it checks whether the file `main` points to (`lib/index.js`) exists. If it does not, pnpm requires build scripts and `allowBuilds` authorization; if it does, pnpm skips the build stage. Keeping `lib/` committed allows installation from GitHub without build approval. `prepack` rebuilds the package when packing.
 
-After changing `src/`, run `pnpm run build` and commit the updated `lib/`. A [test](<./test/lib-sync.test.mjs>) compares `lib/` against a fresh build and fails when the artifacts are stale.
+After changing `src/`, run `pnpm run build` and commit the updated `lib/`. Tests compare the artifacts against a fresh build and fail when they are stale.
 
-Automatic peer dependency installation is disabled. The target environment supplies the DSH host. See `peerDependencies` in the [package manifest](<./package.json>) for the compatibility constraint.
+Automatic peer dependency installation is disabled. The target environment supplies the DSH host. The supported version range is listed in the installation section above.
 
 ## Releasing
 
-Pushing a `v`-prefixed tag triggers the [release workflow](<.github/workflows/release.yml>): it verifies the tag against the package version, extracts the release notes, checks the committed artifacts, runs the syntax checks and tests, and then creates the GitHub Release automatically. No archive is attached.
+Pushing a `v`-prefixed tag triggers GitHub Actions. It verifies the tag against the package version, extracts the release notes, checks the committed artifacts, and runs the syntax checks and tests. Once all checks pass, it creates the GitHub Release without an attached archive.
 
-Before releasing, write that version's section in the [changelog](<./CHANGELOG.md>), commit `lib/`, and push the tag. The workflow fails before publishing when the tag disagrees with the `package.json` version or the changelog lacks that version's section.
+Before releasing, update the package version, write its changelog entry, and commit the source and `lib/`. The workflow fails before publishing if the tag disagrees with the package version or the changelog lacks the matching version.
 
 ```sh
-git tag -a v0.1.4 -m "Release v0.1.4"
-git push origin v0.1.4
+git tag -a v0.1.5 -m "Release v0.1.5"
+git push origin v0.1.5
 ```
 
 | File | Purpose |
 | --- | --- |
 | [src/analyze.js](<./src/analyze.js>) | Official-load recognition, body completeness checks, history merging, and counting |
 | [src/monitor.js](<./src/monitor.js>) | Session observation, source checks, and long polling |
-| [src/index.js](<./src/index.js>) | Host event subscriptions and the status query route |
-| [src/client.jsx](<./src/client.jsx>) | Header entry, right sidebar, and version switching |
+| [src/index.js](<./src/index.js>) | Host event subscriptions, status queries, and translation routes |
+| [src/client.jsx](<./src/client.jsx>) | Header entry, right sidebar, body switching, and translation settings |
+| [src/translation.js](<./src/translation.js>) | Translation requests, successful chunk caching, and cancellation |
+| [src/translation-text.js](<./src/translation-text.js>) | Body splitting and preservation of code, paths, and similar fragments |
+| [src/translation-runtime.js](<./src/translation-runtime.js>) | Translation version detection and configuration schema |
+| [src/translation-client.js](<./src/translation-client.js>) | Translation progress, retries, and client state |
 | [scripts/build.mjs](<./scripts/build.mjs>) | Host and DSH client module builds |
 | [scripts/release-notes.mjs](<./scripts/release-notes.mjs>) | Extracts the Release body for the package version from the changelog |
 | [lib/](<./lib>) | Committed build artifacts, so git installs need no build approval |
 
-## Project documentation
-
-- [Glossary](<./CONTEXT.md>) (Chinese): project terminology and requirement agreements.
-
 ## License
 
-Licensed under the [MIT License](<./LICENSE>). Copyright (c) 2026 yuhong.
+Licensed under the MIT License. Copyright (c) 2026 yuhong.
