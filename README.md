@@ -20,13 +20,17 @@ DeepSeek Harness（DSH）的会话技能状态插件。在会话标题栏显示�
 
 ## 安装
 
-在 DSH 的 Web profile 中直接从 GitHub 安装：
+方式1. 在 DSH 的 Web profile 中执行一条命令即可从 GitHub 安装：
 
 ```sh
 dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 ```
 
-安装完成后重启 DSH，并刷新 DSH 页面。打开已有会话，点击会话标题栏右侧的「技能」入口，即可查看当前会话的技能状态。
+方式2. 在 dsh-market 中搜索 dsh-skill-status 并点击安装
+
+方式3. 在 dsh 的插件页中，点击添加插件，填入项目仓库地址：<https://github.com/yuhhhong/dsh-skill-status>
+
+安装后重启 DSH 并刷新页面，打开任意会话，点击标题栏右侧的「技能」入口即可展开面板。
 
 如需卸载：
 

@@ -20,13 +20,17 @@ The plugin only queries skill status for the current main assistant. It does not
 
 ## Installation
 
-Install directly from GitHub in the DSH web profile:
+Method 1. Run a single command in DSH's Web profile to install from GitHub:
 
 ```sh
 dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 ```
 
-After installation, restart DSH and refresh the DSH page. Open an existing conversation and click **技能** on the right side of the conversation header to view the current skill status.
+Method 2. Search for dsh-skill-status in dsh-market and click Install.
+
+Method 3. On DSH's Plugins page, click Add Plugin and enter the project repository URL: <https://github.com/yuhhhong/dsh-skill-status>
+
+After installation, restart DSH and refresh the page. Open any conversation and click **技能** (Skills) on the right side of the header to expand the panel.
 
 To uninstall:
 
