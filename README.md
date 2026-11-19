@@ -34,7 +34,7 @@ dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 
 方式 3：在 dsh-market 中搜索 `dsh-skill-status` 并点击安装。
 
-方式 4：在 DSH 的插件页中，点击添加插件，填入项目仓库地址：<https://github.com/yuhhhong/dsh-skill-status>
+方式 4：在 DSH 的插件页中，点击添加插件，填入 npm 包名：`dsh-skill-status`
 
 安装后重启 DSH 并刷新页面，打开任意会话，点击标题栏右侧的「技能」入口即可展开面板。
 

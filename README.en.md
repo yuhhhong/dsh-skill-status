@@ -34,7 +34,7 @@ dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 
 Method 3. Search for `dsh-skill-status` in dsh-market and click Install.
 
-Method 4. On DSH's Plugins page, click Add Plugin and enter the project repository URL: <https://github.com/yuhhhong/dsh-skill-status>
+Method 4. On DSH's Plugins page, click Add Plugin and enter the npm package name: `dsh-skill-status`
 
 After installation, restart DSH and refresh the page. Open any conversation and click **技能** (Skills) on the right side of the header to expand the panel.
 
