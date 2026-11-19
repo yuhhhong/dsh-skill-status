@@ -2,7 +2,12 @@
 
 本文件记录各版本的发布内容。GitHub Release 的正文由 [scripts/release-notes.mjs](<./scripts/release-notes.mjs>) 按 `package.json` 的版本号从对应段落提取，工作流见 [.github/workflows/release.yml](<./.github/workflows/release.yml>)。
 
-发布新版本时，先写入该版本的段落，再推送 `v` 前缀标签。
+发布新版本时，先写入该版本的段落，再推送与版本号一致的 `v` 前缀标签。工作流通过检查后先发布到 npm，再创建 GitHub Release。
+
+## 0.1.6
+
+- GitHub Actions 使用 npm Trusted Publishing 自动发布，不再需要配置 npm 令牌。
+- 中英文安装说明改为优先使用 npm，保留 GitHub 安装方式。
 
 ## 0.1.5
 

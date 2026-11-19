@@ -20,15 +20,21 @@ DeepSeek Harness（DSH）的会话技能状态插件。在会话标题栏显示�
 
 ## 安装
 
-方式1. 在 DSH 的 Web profile 中执行一条命令即可从 GitHub 安装：
+方式 1：在 DSH 的 Web profile 中从 npm 安装：
+
+```sh
+dsh plugin --profile web add dsh-skill-status
+```
+
+方式 2：直接从 GitHub 安装：
 
 ```sh
 dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 ```
 
-方式2. 在 dsh-market 中搜索 dsh-skill-status 并点击安装
+方式 3：在 dsh-market 中搜索 `dsh-skill-status` 并点击安装。
 
-方式3. 在 dsh 的插件页中，点击添加插件，填入项目仓库地址：<https://github.com/yuhhhong/dsh-skill-status>
+方式 4：在 DSH 的插件页中，点击添加插件，填入项目仓库地址：<https://github.com/yuhhhong/dsh-skill-status>
 
 安装后重启 DSH 并刷新页面，打开任意会话，点击标题栏右侧的「技能」入口即可展开面板。
 
@@ -38,7 +44,7 @@ dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-当前插件版本为 `0.1.5`。支持的 DSH 版本范围为 `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`；技能正文机翻需要其中的 `0.2.2-rc.2` 或以上版本。较早版本仍可查询技能状态，但不显示机翻入口。
+当前插件版本为 `0.1.6`。支持的 DSH 版本范围为 `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`；技能正文机翻需要其中的 `0.2.2-rc.2` 或以上版本。较早版本仍可查询技能状态，但不显示机翻入口。
 
 ## 技能正文机翻
 
@@ -97,13 +103,13 @@ pnpm test
 
 ## 发布
 
-推送 `v` 前缀标签会触发 GitHub Actions：核对标签与包版本、提取发布说明、检查已提交产物、运行语法检查与测试，全部通过后自动创建 GitHub Release，不附带压缩包。
+推送 `v` 前缀标签会触发 GitHub Actions。工作流核对版本、提取发布说明、检查构建产物并运行测试；通过后先打包并公开发布到 npm，再创建 GitHub Release。
 
-发布前更新包版本、写入该版本的更新日志，并提交源码和 `lib/`。标签与包版本不一致，或更新日志缺少对应版本时，工作流会在发布前失败。
+发布前更新包版本和更新日志，并提交源码和 `lib/`。标签必须与包版本一致。npm 发布使用 [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)：在 npm 包设置中授权 GitHub Actions（账号 `yuhhhong`、仓库 `dsh-skill-status`、工作流 `release.yml`），允许直接执行 `npm publish`，无需配置 `NPM_TOKEN`。
 
 ```sh
-git tag -a v0.1.5 -m "发布 v0.1.5"
-git push origin v0.1.5
+git tag -a v0.1.6 -m "发布 v0.1.6"
+git push origin v0.1.6
 ```
 
 | 文件 | 用途 |

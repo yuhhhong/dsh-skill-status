@@ -20,15 +20,21 @@ The plugin only queries skill status for the current main assistant. It does not
 
 ## Installation
 
-Method 1. Run a single command in DSH's Web profile to install from GitHub:
+Method 1. Install from npm in the DSH web profile:
+
+```sh
+dsh plugin --profile web add dsh-skill-status
+```
+
+Method 2. Install directly from GitHub:
 
 ```sh
 dsh plugin --profile web add github:yuhhhong/dsh-skill-status
 ```
 
-Method 2. Search for dsh-skill-status in dsh-market and click Install.
+Method 3. Search for `dsh-skill-status` in dsh-market and click Install.
 
-Method 3. On DSH's Plugins page, click Add Plugin and enter the project repository URL: <https://github.com/yuhhhong/dsh-skill-status>
+Method 4. On DSH's Plugins page, click Add Plugin and enter the project repository URL: <https://github.com/yuhhhong/dsh-skill-status>
 
 After installation, restart DSH and refresh the page. Open any conversation and click **技能** (Skills) on the right side of the header to expand the panel.
 
@@ -38,7 +44,7 @@ To uninstall:
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-The current plugin version is `0.1.5`. The supported DSH range is `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`. Within that range, skill body translation requires `0.2.2-rc.2` or later. Earlier versions still support skill status queries but do not show the translation controls.
+The current plugin version is `0.1.6`. The supported DSH range is `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`. Within that range, skill body translation requires `0.2.2-rc.2` or later. Earlier versions still support skill status queries but do not show the translation controls.
 
 ## Skill body translation
 
@@ -99,13 +105,13 @@ Automatic peer dependency installation is disabled. The target environment suppl
 
 ## Releasing
 
-Pushing a `v`-prefixed tag triggers GitHub Actions. It verifies the tag against the package version, extracts the release notes, checks the committed artifacts, and runs the syntax checks and tests. Once all checks pass, it creates the GitHub Release without an attached archive.
+Pushing a `v`-prefixed tag triggers GitHub Actions. The workflow verifies the version, extracts the release notes, checks the committed artifacts, and runs tests. If those checks pass, it packs and publishes the public npm package, then creates the GitHub Release.
 
-Before releasing, update the package version, write its changelog entry, and commit the source and `lib/`. The workflow fails before publishing if the tag disagrees with the package version or the changelog lacks the matching version.
+Before releasing, update the package version and changelog, and commit the source and `lib/`. The tag must match the package version. In the npm package settings, configure [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) for GitHub Actions (`yuhhhong`, `dsh-skill-status`, workflow `release.yml`) and allow `npm publish`. No `NPM_TOKEN` is needed.
 
 ```sh
-git tag -a v0.1.5 -m "Release v0.1.5"
-git push origin v0.1.5
+git tag -a v0.1.6 -m "Release v0.1.6"
+git push origin v0.1.6
 ```
 
 | File | Purpose |
