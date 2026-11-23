@@ -66,6 +66,8 @@ function SkillRow({ row, sessionId, translation }) {
   const [expanded, setExpanded] = useState(false);
   const version = row.versions.find(item => item.id === selected) ?? row.versions[0];
   const directoryLabel = row.directoryState === 'absent' ? '未在当前技能目录中' : null;
+  const canTranslate = translation?.info?.supported && translation.locale;
+  const translationActive = expanded && translation?.visible !== false;
   return <details className="dsh-skills-row" onToggle={event => {
     if (event.target === event.currentTarget) {
       setExpanded(event.currentTarget.open);
@@ -77,7 +79,10 @@ function SkillRow({ row, sessionId, translation }) {
       {!!row.issues?.length && <span className="dsh-skills-row-issues">{row.issues.map(issue => <span key={issue.code} className="dsh-skills-notice">{issue.message}</span>)}</span>}
     </summary>
     {directoryLabel && <p className="dsh-skills-muted">{directoryLabel}</p>}
-    {row.description && <p>{row.description}</p>}
+    {row.description?.trim() && (canTranslate ? <section aria-label="简介" className="dsh-skills-description-section">
+      <TranslationBody key={translationViewKey(sessionId, { id: 'description', body: row.description }, translation.info.preferences, translation.locale)}
+        kind="description" heading={<strong>简介</strong>} body={row.description} sessionId={sessionId} translation={translation} expanded={translationActive} />
+    </section> : <p>{row.description}</p>)}
     {row.catalogSource && <details className="dsh-skills-source"><summary>查看当前目录来源</summary><pre>{row.catalogSource}</pre>
       {row.catalogSourceState === 'missing' && <p>源文件不存在</p>}
       {row.catalogSourceState === 'unknown' && <p>来源状态未知</p>}
@@ -88,7 +93,7 @@ function SkillRow({ row, sessionId, translation }) {
         {row.versions.map((item, index) => <option key={item.id} value={item.id}>{index === 0 ? '最近加载' : `版本 ${row.versions.length - index}`} · {new Date(item.time).toLocaleString()} · {labels[item.state]}</option>)}
       </select></label>
       <p className="dsh-skills-muted">{version.entry === 'user' ? '用户调用' : 'skill 工具'} · 加载 {version.loadCount} 次 · {labels[version.state]}</p>
-      <SkillBody key={translationViewKey(sessionId, version, translation?.info?.preferences, translation?.locale)} version={version} sessionId={sessionId} translation={translation} expanded={expanded} />
+      <SkillBody key={translationViewKey(sessionId, version, translation?.info?.preferences, translation?.locale)} version={version} sessionId={sessionId} translation={translation} expanded={translationActive} />
       <details className="dsh-skills-source"><summary>查看加载时的来源</summary><pre>{version.resource ?? '来源状态未知：历史记录未保留可核实的来源。'}</pre>
         <p className="dsh-skills-muted">资源指引不一定包含源文件路径；未取得确切路径时，无法判断源文件是否存在。</p>
       </details>
@@ -100,12 +105,15 @@ function SkillBody({ version, sessionId, translation, expanded }) {
   const heading = <><strong>{version.state === 'loaded' ? '上下文正文' : '历史正文'}</strong>{version.state !== 'unknown' && version.reason ? ` · ${version.reason}` : ''}</>;
   const warning = version.state === 'unknown' ? <p className="dsh-skills-notice">{version.reason ?? '无法确认这版完整正文是否仍在当前上下文中。'}</p> : null;
   if (translation?.info?.supported && translation.locale && typeof version.body === 'string' && version.body.length > 0) {
-    return <TranslationBody heading={heading} warning={warning} body={version.body} sessionId={sessionId} translation={translation} expanded={expanded && translation.visible !== false} />;
+    return <TranslationBody heading={heading} warning={warning} body={version.body} sessionId={sessionId} translation={translation} expanded={expanded} />;
   }
   return <><p>{heading}</p>{warning}{version.body === null ? <p>无法取得加载时的完整正文。</p> : <pre className="dsh-skills-body">{version.body}</pre>}</>;
 }
 
-export function TranslationBody({ heading, warning, body, sessionId, translation, expanded }) {
+export function TranslationBody({ heading, warning, body, sessionId, translation, expanded, kind = 'body' }) {
+  const isDescription = kind === 'description';
+  const Text = isDescription ? 'p' : 'pre';
+  const textClass = isDescription ? 'dsh-skills-description' : 'dsh-skills-body';
   const targetLanguage = translation.info.preferences.targetLanguage === 'auto' ? translation.locale : translation.info.preferences.targetLanguage;
   const store = useMemo(() => createTranslationStore(translation.call, { sessionId, body, locale: targetLanguage }), [translation.call, sessionId, body, targetLanguage]);
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
@@ -127,18 +135,19 @@ export function TranslationBody({ heading, warning, body, sessionId, translation
   };
   return <>
     <div className="dsh-skills-body-heading"><p>{heading}</p><div className="dsh-skills-translation-actions">
-      {(!parts || busy) && <button type="button" disabled={!expanded || busy} onClick={start}>{busy ? '正在机翻…' : '机翻'}</button>}
-      {parts && <button type="button" onClick={() => setTranslated(current => !current)}>{translated ? '查看原文' : '查看译文'}</button>}
-      {busy && <button type="button" onClick={() => store.cancel()}>取消</button>}
+      {(!parts || busy) && <button type="button" aria-label={isDescription ? (busy ? '正在机翻简介' : '机翻简介') : undefined} disabled={!expanded || busy} onClick={start}>{busy ? '正在机翻…' : '机翻'}</button>}
+      {parts && (!isDescription || completed > 0) && <button type="button" aria-label={isDescription ? (translated ? '查看原文（简介）' : '查看译文（简介）') : undefined} onClick={() => setTranslated(current => !current)}>{translated ? '查看原文' : '查看译文'}</button>}
+      {busy && <button type="button" aria-label={isDescription ? '取消翻译简介' : undefined} onClick={() => store.cancel()}>取消</button>}
     </div></div>
     {warning}
     {state.error && <p className="dsh-skills-notice" role="status">{state.error.message}</p>}
-    {parts && <p className="dsh-skills-muted" aria-live="polite">已完成 {completed}/{total} 块{complete ? ' · 翻译完成' : busy ? ' · 正在翻译' : ' · 部分正文尚未翻译'}{translated ? ' · 机翻，仅供阅读' : ''}</p>}
-    {!translated || !parts ? <pre className="dsh-skills-body">{body}</pre> : <pre className="dsh-skills-body">{parts.map((part, index) => <React.Fragment key={index}>
+    {isDescription && parts && (!complete || translated) && <p className="dsh-skills-muted" aria-live="polite">{complete ? '机翻，仅供阅读' : busy ? '正在翻译简介…' : '简介尚未翻译完成'}</p>}
+    {!isDescription && parts && <p className="dsh-skills-muted" aria-live="polite">已完成 {completed}/{total} 块{complete ? ' · 翻译完成' : busy ? ' · 正在翻译' : ' · 部分正文尚未翻译'}{translated ? ' · 机翻，仅供阅读' : ''}</p>}
+    <Text className={textClass}>{!translated || !parts ? body : parts.map((part, index) => <React.Fragment key={index}>
       {part.translatable && part.status !== 'success' && <span className={`dsh-skills-translation-status${part.status === 'failed' ? ' dsh-skills-notice' : ''}`}>{part.status === 'translating' ? '【正在翻译，暂显示原文】' : part.status === 'failed' ? `【翻译失败：${part.error?.message ?? '请手动重试'}，暂显示原文】` : part.status === 'cancelled' ? '【已取消，暂显示原文】' : '【尚未翻译，暂显示原文】'}</span>}
       {part.status === 'success' ? part.text : part.original}
-    </React.Fragment>)}</pre>}
-    {parts && !complete && !busy && <button type="button" className="dsh-skills-retry" onClick={start}>重试未完成块</button>}
+    </React.Fragment>)}</Text>
+    {parts && !complete && !busy && <button type="button" className="dsh-skills-retry" disabled={!expanded} onClick={start}>{isDescription ? '重试翻译' : '重试未完成块'}</button>}
   </>;
 }
 
@@ -180,8 +189,8 @@ export function TranslationSettings({ scope, view }) {
     }
   }
   return <form className="dsh-skills dsh-skills-settings" onSubmit={save}>
-    <h3>技能正文机翻</h3>
-    <p className="dsh-skills-muted">仅翻译当前查看的正文，译文仅供阅读。两项设置保存后一起生效。</p>
+    <h3>技能机翻</h3>
+    <p className="dsh-skills-muted">适用于技能简介和正文。两项设置保存后一起生效。</p>
     {snapshot.status !== 'ready' ? <p role="status">{snapshot.status === 'loading' ? '正在读取翻译设置…' : '当前无法读取翻译设置。'}</p> : <>
       <label className="dsh-skills-version">翻译服务<select value={provider} disabled={saving || !snapshot.writable} onChange={event => setProvider(event.target.value)}><option value="bing">Bing</option><option value="google">Google</option></select></label>
       <label className="dsh-skills-version">目标语言<select value={targetLanguage === 'auto' ? 'auto' : 'custom'} disabled={saving || !snapshot.writable} onChange={event => setTargetLanguage(event.target.value)}><option value="auto">跟随界面语言</option><option value="custom">指定语言代码</option></select></label>
@@ -298,9 +307,11 @@ const CSS_TEXT = `
 .dsh-skills button:hover { background:var(--dsw-alias-bg-layer-2); }
 .dsh-skills button:disabled { cursor:default; opacity:.55; }
 .dsh-skills button:focus-visible { outline:2px solid var(--dsw-alias-brand-primary); outline-offset:3px; }
+.dsh-skills-description { margin:4px 0 10px; white-space:pre-wrap; }
 .dsh-skills-body-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
 .dsh-skills-body-heading>p { margin:10px 0; }
 .dsh-skills-translation-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.dsh-skills-description-section .dsh-skills-translation-actions { margin-left:auto; }
 .dsh-skills-translation-status { color:var(--dsw-alias-label-secondary); font:12px/1.7 sans-serif; }
 .dsh-skills-translation-status.dsh-skills-notice { color:var(--dsw-alias-state-warn-primary); }
 .dsh-skills-settings { height:auto; padding:12px 0; overflow:visible; }

@@ -233,6 +233,23 @@ test('支持版本服务缺失仍显示机翻入口，旧版本与缺失正文�
   assert.match(missing, /无法取得加载时的完整正文/);
 });
 
+test('技能简介和正文分别提供机翻入口，未加载正文时仍可翻译简介', () => {
+  const data = state('Original body');
+  const [skill] = data.data.skills;
+  skill.description = '<b>Original description</b>';
+  const render = supported => renderToStaticMarkup(React.createElement(client.SkillPanel, { state: data, translation: translation(supported) }));
+  const withBody = render(true);
+  assert.equal(withBody.match(/>机翻<\/button>/g)?.length, 2);
+  assert.match(withBody, /<section aria-label="简介"[^>]*>.*?<strong>简介<\/strong>.*?aria-label="机翻简介"[^>]*>机翻<\/button>.*?<p class="dsh-skills-description">&lt;b&gt;Original description&lt;\/b&gt;<\/p><\/section>/);
+  assert.match(withBody, /<pre class="dsh-skills-body">Original body<\/pre>/);
+  assert.doesNotMatch(render(false), />机翻<\/button>/);
+  assert.match(render(false), /<p>&lt;b&gt;Original description&lt;\/b&gt;<\/p>/);
+  skill.versions = [];
+  assert.equal(render(true).match(/>机翻<\/button>/g)?.length, 1);
+  skill.description = '  ';
+  assert.doesNotMatch(render(true), />机翻<\/button>/);
+});
+
 test('独立设置展示 Bing/Google 与跟随界面语言，不提供大模型路线', () => {
   const snapshot = { status: 'ready', writable: true, revision: 1, value: { provider: 'bing', targetLanguage: 'auto' } };
   const scope = { getSnapshot: () => snapshot, subscribe: () => () => {}, mutate() { throw new Error('渲染不能保存配置'); } };

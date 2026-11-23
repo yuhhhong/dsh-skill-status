@@ -4,7 +4,7 @@
 
 [中文](<./README.md>) | English
 
-A session skill status plugin for DeepSeek Harness (DSH). It shows the number of confirmed loaded skills in the conversation header. Click **技能** (Skills) to open the right sidebar and check whether each skill's full main body remains in the current main assistant context, along with its recorded versions and sources. You can also translate skill bodies on demand.
+A session skill status plugin for DeepSeek Harness (DSH). It shows the number of confirmed loaded skills in the conversation header. Click **技能** (Skills) to open the right sidebar and check whether each skill's full main body remains in the current main assistant context, along with its recorded versions and sources. You can also translate skill descriptions and bodies on demand.
 
 ## Features
 
@@ -14,7 +14,7 @@ A session skill status plugin for DeepSeek Harness (DSH). It shows the number of
 - Shows historical body versions, load counts, and resource guidance recorded at load time. Multiple versions of one skill count as one skill.
 - Displays load-time sources separately from current catalog sources. Later edits to source files do not replace historical bodies.
 - Updates on session events and rechecks catalog and file status every five seconds during quiet periods.
-- Translates the body you are viewing through Bing or Google, with target language settings, original/translation switching, chunk progress, and retries for unfinished chunks only.
+- Translates skill descriptions and bodies through Bing or Google, with target language settings, switching between original and translated text, and progress and retries for unfinished body chunks.
 
 The plugin only queries skill status for the current main assistant. It does not load, reload, or unload skills, or modify session content.
 
@@ -44,13 +44,13 @@ To uninstall:
 dsh plugin --profile web remove dsh-skill-status
 ```
 
-The current plugin version is `0.1.6`. The supported DSH range is `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`. Within that range, skill body translation requires `0.2.2-rc.2` or later. Earlier versions still support skill status queries but do not show the translation controls.
+The current plugin version is `0.1.7`. The supported DSH range is `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`. Within that range, machine translation requires `0.2.2-rc.2` or later. Earlier versions still support skill status queries but do not show the translation controls.
 
-## Skill body translation
+## Skill translation
 
-First enable **思考过程机器翻译** (Thinking process machine translation) in DSH's **插件** (Plugins) page. Expand a skill entry, then click **机翻** (Translate) next to **上下文正文** (Context body) or **历史正文** (Historical body). The body is translated in chunks, with each completed chunk shown as it arrives. Unfinished or failed chunks keep the original text and show a status message.
+First enable **思考过程机器翻译** (Thinking process machine translation) in DSH's **插件** (Plugins) page. Expand a skill entry and click **机翻** (Translate) next to **简介** (Description) to translate the description. Click **机翻** next to **上下文正文** (Context body) or **历史正文** (Historical body) to translate the body in chunks. Each completed chunk appears as it arrives. Unfinished or failed chunks keep the original text and show a status message.
 
-During translation, click **取消** (Cancel) to stop, or switch between **查看原文** (View original) and **查看译文** (View translation). After cancellation or failure, click **重试未完成块** (Retry unfinished chunks) to continue. Successfully translated chunks are reused.
+During translation, click **取消** (Cancel) to stop, or switch between **查看原文** (View original) and **查看译文** (View translation). After cancellation or failure, click **重试翻译** (Retry translation) for the description or **重试未完成块** (Retry unfinished chunks) for the body. Successfully translated chunks are reused.
 
 Open this plugin's details on the Plugins page to configure:
 
@@ -110,8 +110,8 @@ Pushing a `v`-prefixed tag triggers GitHub Actions. The workflow verifies the ve
 Before releasing, update the package version and changelog, and commit the source and `lib/`. The tag must match the package version. In the npm package settings, configure [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) for GitHub Actions (`yuhhhong`, `dsh-skill-status`, workflow `release.yml`) and allow `npm publish`. No `NPM_TOKEN` is needed.
 
 ```sh
-git tag -a v0.1.6 -m "Release v0.1.6"
-git push origin v0.1.6
+git tag -a v0.1.7 -m "Release v0.1.7"
+git push origin v0.1.7
 ```
 
 | File | Purpose |
